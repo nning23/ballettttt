@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ballet Planner · 芭蕾計劃本</title>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --cream: #FFEAE3;
+            --paper: #FFF5F2;
+            --blush: #F5E6E0;
+            --rose: #E8B4B8;
+            --dusty: #B8A0A0;
+            --ballet: #D4A5A5;
+            --deep: #8B6B6B;
+            --ink: #6B5550;
+            --gold: #C9B896;
+            --velvet: #8B4555;
+            --velvet-dark: #6B3542;
+            --highlight: #FFF9C4;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Noto Serif TC', 'Playfair Display', serif;
+            background: var(--cream);
+            color: var(--ink);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* 開屏動畫 */
+        .splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--velvet-dark);
+            z-index: 9999;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 1s ease;
+        }
+
+        .splash-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .curtain-left, .curtain-right {
+            position: absolute;
+            top: 0;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--velvet-dark) 0%, var(--velvet) 50%, var(--velvet-dark) 100%);
+            transition: transform 2.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .curtain-left { left: 0; }
+        .curtain-right { right: 0; }
+
+        .curtain-left.open { transform: translateX(-100%); }
+        .curtain-right.open { transform: translateX(100%); }
+
+        .splash-title {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            color: var(--gold);
+        }
+
+        .splash-title h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 36px;
+            font-style: italic;
+            letter-spacing: 4px;
+            margin-bottom: 12px;
+        }
+
+        .splash-title p {
+            font-size: 16px;
+            letter-spacing: 2px;
+        }
+
+        .skip-btn {
+            position: absolute;
+            bottom: 40px;
+            right: 40px;
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid var(--gold);
+            color: var(--gold);
+            font-family: 'Noto Serif TC', serif;
+            font-size: 14px;
+            cursor: pointer;
+            border-radius: 4px;
+            z-index: 20;
+        }
+
+        /* 主內容 */
+        .main-content {
+            opacity: 0;
+            transition: opacity 0.8s ease;
+        }
+
+        .main-content.visible {
+            opacity: 1;
+        }
+
+        /* 手機桌面布局 */
+        .phone-container {
+            max-width: 480px;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background: var(--cream);
+        }
+
+        /* 頂部導航 */
+        .top-bar {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--paper);
+            border-bottom: 1px solid var(--blush);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--rose), var(--ballet));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+        }
+
+        .logo-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--deep);
+        }
+
+        .reward-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--blush);
+            border-radius: 20px;
+            font-size: 14px;
+            color: var(--deep);
+        }
+
+        /* 日期顯示 */
+        .date-display {
+            padding: 24px 20px;
+            text-align: center;
+        }
+
+        .date-main {
+            font-family: 'Playfair Display', serif;
+            font-size: 32px;
+            font-weight: 600;
+            color: var(--deep);
+            margin-bottom: 8px;
+        }
+
+        .date-sub {
+            font-size: 16px;
+            color: var(--dusty);
+            letter-spacing: 2px;
+        }
+
+        /* 內容區域 */
+        .content-area {
+            flex: 1;
+            padding: 0 20px 100px;
+            overflow-y: auto;
+        }
+
+        /* 視圖容器 */
+        .view-container {
+            display: none;
+        }
+
+        .view-container.active {
+            display: block;
+        }
+
+        /* 任務卡片 */
+        .task-card {
+            background: var(--paper);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid var(--blush);
+            box-shadow: 0 2px 8px rgba(139, 107, 107, 0.08);
+            transition: all 0.3s;
+        }
+
+        .task-card:active {
+            transform: scale(0.98);
+        }
+
+        .task-card.priority {
+            background: var(--highlight);
+            border-color: #E6D700;
+        }
+
+        .task-card.completed {
+            opacity: 0.6;
+        }
+
+        .task-header {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .task-checkbox {
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--rose);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .task-checkbox.checked {
+            background: var(--ballet);
+            border-color: var(--ballet);
+        }
+
+        .task-checkbox.checked::after {
+            content: '✓';
+            color: white;
+            font-size: 14px;
+        }
+
+        .task-content {
+            flex: 1;
+        }
+
+        .task-title {
+            font-size: 16px;
+            color: var(--deep);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .task-card.completed .task-title {
+            text-decoration: line-through;
+        }
+
+        .task-category {
+            font-size: 20px;
+        }
+
+        .task-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 13px;
+            color: var(--dusty);
+            flex-wrap: wrap;
+        }
+
+        .task-deadline.urgent {
+            color: #d47575;
+            font-weight: 500;
+        }
+
+        .task-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .task-action-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: var(--blush);
+            border-radius: 6px;
+            color: var(--dusty);
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        /* 子任務 */
+        .subtasks {
+            margin-top: 12px;
+            padding-left: 36px;
+        }
+
+        .subtask-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 0;
+            font-size: 14px;
+            color: var(--dusty);
+        }
+
+        .subtask-checkbox {
+            width: 18px;
+            height: 18px;
+            border: 2px solid var(--rose);
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .subtask-checkbox.checked {
+            background: var(--ballet);
+            border-color: var(--ballet);
+        }
+
+        .subtask-checkbox.checked::after {
+            content: '✓';
+            color: white;
+            font-size: 12px;
+        }
+
+        .subtask-input {
+            width: 100%;
+            padding: 10px 16px;
+            border: 2px dashed var(--rose);
+            border-radius: 6px;
+            font-family: 'Noto Serif TC', serif;
+            font-size: 14px;
+            color: var(--ink);
+            background: transparent;
+            outline: none;
+            margin-top: 12px;
+        }
+
+        /* 日曆視圖 */
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding: 0 20px;
+        }
+
+        .month-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--deep);
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .nav-btn {
+            width: 40px;
+            height: 40px;
+            border: 2px solid var(--rose);
+            background: var(--paper);
+            border-radius: 50%;
+            color: var(--ballet);
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            padding: 0 20px;
+        }
+
+        .weekday {
+            text-align: center;
+            font-size: 12px;
+            color: var(--dusty);
+            padding: 12px 0;
+            font-weight: 500;
+        }
+
+        .day-cell {
+            aspect-ratio: 1;
+            border: 2px solid var(--blush);
+            border-radius: 12px;
+            padding: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: var(--paper);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .day-cell:active {
+            transform: scale(0.95);
+        }
+
+        .day-cell.other-month {
+            opacity: 0.3;
+        }
+
+        .day-cell.today {
+            border-color: var(--ballet);
+            background: var(--blush);
+        }
+
+        .day-cell.selected {
+            background: var(--rose);
+            border-color: var(--ballet);
+        }
+
+        .day-number {
+            font-family: 'Playfair Display', serif;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--deep);
+        }
+
+        .day-dots {
+            display: flex;
+            gap: 3px;
+            margin-top: 4px;
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+        }
+
+        .dot.work { background: #d4a574; }
+        .dot.life { background: #e8a5a5; }
+        .dot.study { background: #a5b8d4; }
+
+        /* 清單視圖 */
+        .list-filters {
+            display: flex;
+            gap: 8px;
+            padding: 0 20px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border: 2px solid var(--rose);
+            background: var(--paper);
+            border-radius: 20px;
+            font-size: 13px;
+            color: var(--dusty);
+            cursor: pointer;
+            white-space: nowrap;
+            font-family: 'Noto Serif TC', serif;
+        }
+
+        .filter-btn.active {
+            background: var(--blush);
+            border-color: var(--ballet);
+            color: var(--deep);
+        }
+
+        /* 我的頁面 */
+        .profile-section {
+            padding: 20px;
+        }
+
+        .profile-card {
+            background: var(--paper);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 20px;
+            border: 1px solid var(--blush);
+        }
+
+        .profile-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--deep);
+            margin-bottom: 16px;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--blush);
+        }
+
+        .stat-row:last-child {
+            border-bottom: none;
+        }
+
+        .stat-label {
+            font-size: 15px;
+            color: var(--dusty);
+        }
+
+        .stat-value {
+            font-family: 'Playfair Display', serif;
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--ballet);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 12px;
+            background: var(--blush);
+            border-radius: 6px;
+            overflow: hidden;
+            margin: 16px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--rose), var(--ballet));
+            border-radius: 6px;
+            transition: width 0.5s ease;
+        }
+
+        /* 快速添加 */
+        .quick-add {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 40px);
+            max-width: 440px;
+            padding: 16px;
+            background: var(--paper);
+            border-radius: 24px;
+            border: 1px solid var(--blush);
+            box-shadow: 0 4px 20px rgba(139, 107, 107, 0.15);
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .quick-add-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: none;
+            background: transparent;
+            font-family: 'Noto Serif TC', serif;
+            font-size: 15px;
+            color: var(--ink);
+            outline: none;
+        }
+
+        .quick-add-btn {
+            width: 48px;
+            height: 48px;
+            border: none;
+            background: linear-gradient(135deg, var(--rose), var(--ballet));
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(212, 165, 165, 0.3);
+        }
+
+        /* 底部導航 */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 480px;
+            background: var(--paper);
+            border-top: 1px solid var(--blush);
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0;
+            box-shadow: 0 -2px 10px rgba(139, 107, 107, 0.05);
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: var(--dusty);
+        }
+
+        .nav-item.active {
+            color: var(--ballet);
+        }
+
+        .nav-icon {
+            font-size: 24px;
+        }
+
+        .nav-label {
+            font-size: 12px;
+            letter-spacing: 1px;
+        }
+
+        /* 添加任務面板 */
+        .add-panel {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%) translateY(100%);
+            width: 100%;
+            max-width: 480px;
+            background: var(--paper);
+            border-radius: 24px 24px 0 0;
+            padding: 24px;
+            box-shadow: 0 -4px 20px rgba(139, 107, 107, 0.2);
+            transition: transform 0.3s ease;
+            z-index: 200;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .add-panel.open {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .panel-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--deep);
+        }
+
+        .close-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            background: var(--blush);
+            border-radius: 50%;
+            color: var(--dusty);
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            color: var(--dusty);
+            margin-bottom: 8px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--rose);
+            border-radius: 8px;
+            font-family: 'Noto Serif TC', serif;
+            font-size: 15px;
+            color: var(--ink);
+            background: white;
+            outline: none;
+        }
+
+        .category-select {
+            display: flex;
+            gap: 12px;
+        }
+
+        .category-btn {
+            flex: 1;
+            padding: 16px;
+            border: 2px solid var(--rose);
+            background: white;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .category-btn.active {
+            border-color: var(--ballet);
+            background: var(--blush);
+        }
+
+        .category-icon {
+            font-size: 28px;
+        }
+
+        .category-name {
+            font-size: 12px;
+            color: var(--dusty);
+        }
+
+        .priority-toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .priority-btn {
+            padding: 8px 16px;
+            border: 2px solid var(--rose);
+            background: white;
+            border-radius: 6px;
+            font-size: 14px;
+            color: var(--dusty);
+            cursor: pointer;
+            font-family: 'Noto Serif TC', serif;
+        }
+
+        .priority-btn.active {
+            background: var(--highlight);
+            border-color: #E6D700;
+            color: var(--deep);
+        }
+
+        .datetime-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .submit-btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            background: linear-gradient(135deg, var(--rose), var(--ballet));
+            color: white;
+            border-radius: 12px;
+            font-family: 'Noto Serif TC', serif;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        /* 遮罩 */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.3);
+            z-index: 150;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        /* 空狀態 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--dusty);
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.4;
+        }
+
+        /* 獎勵動畫 */
+        .reward-animation {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 80px;
+            animation: rewardPop 1s ease;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        @keyframes rewardPop {
+            0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+        }
+
+        /* 響應式 */
+        @media (max-width: 480px) {
+            .phone-container {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 開屏動畫 -->
+    <div class="splash-screen" id="splashScreen">
+        <div class="curtain-left" id="curtainLeft"></div>
+        <div class="curtain-right" id="curtainRight"></div>
+        <div class="splash-title">
+            <h1>Ballet Planner</h1>
+            <p>芭蕾計劃本</p>
+        </div>
+        <button class="skip-btn" onclick="skipSplash()">跳過 Skip</button>
+    </div>
+
+    <!-- 遮罩 -->
+    <div class="overlay" id="overlay" onclick="closeAddPanel()"></div>
+
+    <!-- 添加任務面板 -->
+    <div class="add-panel" id="addPanel">
+        <div class="panel-header">
+            <div class="panel-title">添加任務 Add Task</div>
+            <button class="close-btn" onclick="closeAddPanel()">×</button>
+        </div>
+        
+        <div class="form-group">
+            <label class="form-label">任務名稱 Task Name</label>
+            <input type="text" class="form-input" id="taskNameInput" placeholder="輸入任務名稱...">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">分類 Category</label>
+            <div class="category-select">
+                <button class="category-btn active" data-category="work" onclick="selectCategory('work')">
+                    <span class="category-icon">🍞</span>
+                    <span class="category-name">工作 Work</span>
+                </button>
+                <button class="category-btn" data-category="life" onclick="selectCategory('life')">
+                    <span class="category-icon">💗</span>
+                    <span class="category-name">生活 Life</span>
+                </button>
+                <button class="category-btn" data-category="study" onclick="selectCategory('study')">
+                    <span class="category-icon">💎</span>
+                    <span class="category-name">學習 Study</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="priority-toggle">
+                <span class="form-label">優先級 Priority</span>
+                <button class="priority-btn" id="priorityBtn" onclick="togglePriority()">普通 Normal</button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">截止日期 & 提醒時間</label>
+            <div class="datetime-inputs">
+                <input type="date" class="form-input" id="deadlineInput">
+                <input type="time" class="form-input" id="reminderInput">
+            </div>
+        </div>
+
+        <button class="submit-btn" onclick="addTask()">添加任務 Add Task</button>
+    </div>
+
+    <!-- 主內容 -->
+    <div class="main-content" id="mainContent">
+        <div class="phone-container">
+            <!-- 頂部導航 -->
+            <div class="top-bar">
+                <div class="logo">
+                    <div class="logo-icon">🩰</div>
+                    <div class="logo-text">Ballet Planner</div>
+                </div>
+                <div class="reward-badge">
+                    <span>🎀</span>
+                    <span id="bowCount">0</span>
+                </div>
+            </div>
+
+            <!-- 日期顯示 -->
+            <div class="date-display">
+                <div class="date-main" id="dateMain"></div>
+                <div class="date-sub" id="dateSub"></div>
+            </div>
+
+            <!-- 內容區域 -->
+            <div class="content-area">
+                <!-- 首頁視圖 -->
+                <div class="view-container active" id="homeView">
+                    <div id="homeTasks"></div>
+                </div>
+
+                <!-- 日曆視圖 -->
+                <div class="view-container" id="calendarView">
+                    <div class="calendar-header">
+                        <div class="month-title" id="monthTitle"></div>
+                        <div class="nav-buttons">
+                            <button class="nav-btn" onclick="changeMonth(-1)">‹</button>
+                            <button class="nav-btn" onclick="goToToday()">今天</button>
+                            <button class="nav-btn" onclick="changeMonth(1)">›</button>
+                        </div>
+                    </div>
+                    <div class="calendar-grid" id="calendarGrid"></div>
+                    <div id="calendarTasks" style="padding: 20px;"></div>
+                </div>
+
+                <!-- 清單視圖 -->
+                <div class="view-container" id="listView">
+                    <div class="list-filters">
+                        <button class="filter-btn active" onclick="filterTasks('all')">全部 All</button>
+                        <button class="filter-btn" onclick="filterTasks('work')">🍞 工作</button>
+                        <button class="filter-btn" onclick="filterTasks('life')">💗 生活</button>
+                        <button class="filter-btn" onclick="filterTasks('study')">💎 學習</button>
+                        <button class="filter-btn" onclick="filterTasks('priority')">⭐ 優先</button>
+                    </div>
+                    <div id="listTasks" style="padding: 0 20px;"></div>
+                </div>
+
+                <!-- 我的視圖 -->
+                <div class="view-container" id="profileView">
+                    <div class="profile-section">
+                        <div class="profile-card">
+                            <div class="profile-title">🎀 獎勵統計 Rewards</div>
+                            <div class="stat-row">
+                                <span class="stat-label">已獲得蝴蝶結 Bows</span>
+                                <span class="stat-value" id="statBows">0</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">已獲得芭蕾舞鞋 Shoes</span>
+                                <span class="stat-value" id="statShoes">0</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">總完成任務 Total Completed</span>
+                                <span class="stat-value" id="statTotal">0</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                            </div>
+                            <div style="text-align: center; font-size: 14px; color: var(--dusty);" id="progressText">
+                                再完成 10 個任務獲得芭蕾舞鞋
+                            </div>
+                        </div>
+
+                        <div class="profile-card">
+                            <div class="profile-title">📊 任務統計 Tasks</div>
+                            <div class="stat-row">
+                                <span class="stat-label">今日任務 Today</span>
+                                <span class="stat-value" id="statToday">0</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">本週任務 This Week</span>
+                                <span class="stat-value" id="statWeek">0</span>
+                            </div>
+                            <div class="stat-row">
+                                <span class="stat-label">全部任務 All Tasks</span>
+                                <span class="stat-value" id="statAll">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 快速添加 -->
+            <div class="quick-add" id="quickAdd">
+                <input type="text" class="quick-add-input" id="quickAddInput" placeholder="快速添加任務... Quick add" readonly onclick="openAddPanel()">
+                <button class="quick-add-btn" onclick="openAddPanel()">+</button>
+            </div>
+
+            <!-- 底部導航 -->
+            <div class="bottom-nav">
+                <div class="nav-item active" onclick="switchTab('home')">
+                    <div class="nav-icon">🏠</div>
+                    <div class="nav-label">首頁</div>
+                </div>
+                <div class="nav-item" onclick="switchTab('calendar')">
+                    <div class="nav-icon">📅</div>
+                    <div class="nav-label">日曆</div>
+                </div>
+                <div class="nav-item" onclick="switchTab('list')">
+                    <div class="nav-icon">📋</div>
+                    <div class="nav-label">清單</div>
+                </div>
+                <div class="nav-item" onclick="switchTab('profile')">
+                    <div class="nav-icon">👤</div>
+                    <div class="nav-label">我的</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 檢查是否第一次打開
+        const hasSeenSplash = localStorage.getItem('hasSeenSplash');
+        
+        if (hasSeenSplash) {
+            document.getElementById('splashScreen').classList.add('hidden');
+            document.getElementById('mainContent').classList.add('visible');
+        } else {
+            setTimeout(() => {
+                document.getElementById('curtainLeft').classList.add('open');
+                document.getElementById('curtainRight').classList.add('open');
+                
+                setTimeout(() => {
+                    document.getElementById('splashScreen').classList.add('hidden');
+                    document.getElementById('mainContent').classList.add('visible');
+                    localStorage.setItem('hasSeenSplash', 'true');
+                }, 2000);
+            }, 1000);
+        }
+
+        function skipSplash() {
+            document.getElementById('splashScreen').classList.add('hidden');
+            document.getElementById('mainContent').classList.add('visible');
+            localStorage.setItem('hasSeenSplash', 'true');
+        }
+
+        // 數據
+        let tasks = JSON.parse(localStorage.getItem('balletTasks')) || [];
+        let rewards = JSON.parse(localStorage.getItem('balletRewards')) || { bows: 0, shoes: 0, totalCompleted: 0 };
+        let currentTab = 'home';
+        let currentDate = new Date();
+        let selectedDate = new Date();
+        let selectedCategory = 'work';
+        let isPriority = false;
+        let currentFilter = 'all';
+
+        // 初始化
+        function init() {
+            updateDate();
+            renderAll();
+            checkReminders();
+            setInterval(checkReminders, 60000);
+        }
+
+        function updateDate() {
+            const now = new Date();
+            const options = { month: 'long', day: 'numeric', weekday: 'long' };
+            document.getElementById('dateMain').textContent = now.toLocaleDateString('zh-TW', options);
+            document.getElementById('dateSub').textContent = 'Today · 今天';
+        }
+
+        function renderAll() {
+            renderHome();
+            renderCalendar();
+            renderList();
+            renderProfile();
+            updateRewards();
+        }
+
+        // 視圖切換
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            // 更新導航狀態
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            event.target.closest('.nav-item').classList.add('active');
+            
+            // 切換視圖
+            document.querySelectorAll('.view-container').forEach(view => view.classList.remove('active'));
+            document.getElementById(tab + 'View').classList.add('active');
+            
+            // 隱藏/顯示快速添加
+            document.getElementById('quickAdd').style.display = tab === 'profile' ? 'none' : 'flex';
+            
+            // 重新渲染
+            if (tab === 'calendar') renderCalendar();
+            if (tab === 'list') renderList();
+            if (tab === 'profile') renderProfile();
+        }
+
+        // 首頁
+        function renderHome() {
+            const today = new Date();
+            const dateKey = getDateKey(today);
+            const todayTasks = tasks.filter(t => t.date === dateKey);
+            
+            const container = document.getElementById('homeTasks');
+            
+            if (todayTasks.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">🩰</div>
+                        <div>暫無任務，添加一個吧</div>
+                        <div style="font-size: 14px; margin-top: 8px;">No tasks yet, add one</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = todayTasks.map(task => createTaskHTML(task)).join('');
+        }
+
+        // 日曆
+        function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            
+            document.getElementById('monthTitle').textContent = `${year}年 ${month + 1}月`;
+            
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const daysInPrevMonth = new Date(year, month, 0).getDate();
+            
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+            
+            ['日', '一', '二', '三', '四', '五', '六'].forEach(day => {
+                const el = document.createElement('div');
+                el.className = 'weekday';
+                el.textContent = day;
+                grid.appendChild(el);
+            });
+            
+            for (let i = firstDay - 1; i >= 0; i--) {
+                const day = daysInPrevMonth - i;
+                grid.appendChild(createDayCell(day, true, year, month - 1));
+            }
+            
+            const today = new Date();
+            for (let i = 1; i <= daysInMonth; i++) {
+                const isToday = i === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+                grid.appendChild(createDayCell(i, false, year, month, isToday));
+            }
+            
+            const totalCells = grid.children.length - 7;
+            const remaining = 42 - totalCells;
+            for (let i = 1; i <= remaining; i++) {
+                grid.appendChild(createDayCell(i, true, year, month + 1));
+            }
+            
+            renderCalendarTasks();
+        }
+
+        function createDayCell(day, isOtherMonth, year, month, isToday = false) {
+            const cell = document.createElement('div');
+            cell.className = `day-cell ${isOtherMonth ? 'other-month' : ''} ${isToday ? 'today' : ''}`;
+            
+            const dateKey = `${year}-${month + 1}-${day}`;
+            const dayTasks = tasks.filter(t => t.date === dateKey);
+            
+            const isSelected = selectedDate.getDate() === day && 
+                              selectedDate.getMonth() === month && 
+                              selectedDate.getFullYear() === year;
+            
+            if (isSelected && !isOtherMonth) cell.classList.add('selected');
+            
+            cell.innerHTML = `
+                <div class="day-number">${day}</div>
+                <div class="day-dots">
+                    ${dayTasks.slice(0, 3).map(t => `<div class="dot ${t.category}"></div>`).join('')}
+                </div>
+            `;
+            
+            if (!isOtherMonth) {
+                cell.onclick = () => selectDate(year, month, day);
+            }
+            
+            return cell;
+        }
+
+        function selectDate(year, month, day) {
+            selectedDate = new Date(year, month, day);
+            renderCalendar();
+        }
+
+        function renderCalendarTasks() {
+            const dateKey = getDateKey(selectedDate);
+            const dayTasks = tasks.filter(t => t.date === dateKey);
+            
+            const container = document.getElementById('calendarTasks');
+            
+            if (dayTasks.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div>暫無任務</div></div>';
+                return;
+            }
+            
+            container.innerHTML = dayTasks.map(task => createTaskHTML(task)).join('');
+        }
+
+        function changeMonth(delta) {
+            currentDate.setMonth(currentDate.getMonth() + delta);
+            renderCalendar();
+        }
+
+        function goToToday() {
+            currentDate = new Date();
+            selectedDate = new Date();
+            renderCalendar();
+        }
+
+        // 清單
+        function renderList() {
+            let filteredTasks = tasks;
+            
+            if (currentFilter === 'priority') {
+                filteredTasks = tasks.filter(t => t.priority);
+            } else if (currentFilter !== 'all') {
+                filteredTasks = tasks.filter(t => t.category === currentFilter);
+            }
+            
+            const container = document.getElementById('listTasks');
+            
+            if (filteredTasks.length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-icon">🎀</div><div>暫無任務</div></div>';
+                return;
+            }
+            
+            container.innerHTML = filteredTasks.map(task => createTaskHTML(task)).join('');
+        }
+
+        function filterTasks(filter) {
+            currentFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            renderList();
+        }
+
+        // 我的
+        function renderProfile() {
+            const today = new Date();
+            const todayKey = getDateKey(today);
+            const todayTasks = tasks.filter(t => t.date === todayKey);
+            
+            const weekStart = new Date(today);
+            weekStart.setDate(today.getDate() - today.getDay());
+            const weekTasks = tasks.filter(t => {
+                const taskDate = new Date(t.date);
+                return taskDate >= weekStart;
+            });
+            
+            document.getElementById('statToday').textContent = todayTasks.length;
+            document.getElementById('statWeek').textContent = weekTasks.length;
+            document.getElementById('statAll').textContent = tasks.length;
+        }
+
+        // 任務操作
+        function createTaskHTML(task) {
+            const categoryIcons = { work: '🍞', life: '💗', study: '💎' };
+            const isUrgent = task.deadline && new Date(task.deadline) <= new Date(Date.now() + 86400000);
+            
+            return `
+                <div class="task-card ${task.priority ? 'priority' : ''} ${task.completed ? 'completed' : ''}">
+                    <div class="task-header">
+                        <div class="task-checkbox ${task.completed ? 'checked' : ''}" onclick="toggleTask(${task.id})"></div>
+                        <div class="task-content">
+                            <div class="task-title">
+                                <span class="task-category">${categoryIcons[task.category]}</span>
+                                ${task.title}
+                            </div>
+                            <div class="task-meta">
+                                ${task.deadline ? `<span class="task-deadline ${isUrgent ? 'urgent' : ''}">📅 ${task.deadline}</span>` : ''}
+                                ${task.reminder ? `<span>⏰ ${task.reminder}</span>` : ''}
+                            </div>
+                        </div>
+                        <div class="task-actions">
+                            <button class="task-action-btn" onclick="deleteTask(${task.id})">×</button>
+                        </div>
+                    </div>
+                    <div class="subtasks">
+                        ${task.subtasks.map((st, i) => `
+                            <div class="subtask-item">
+                                <div class="subtask-checkbox ${st.completed ? 'checked' : ''}" onclick="toggleSubtask(${task.id}, ${i})"></div>
+                                <span style="${st.completed ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${st.title}</span>
+                            </div>
+                        `).join('')}
+                        <input type="text" class="subtask-input" placeholder="添加子任務..." onkeypress="if(event.key==='Enter')addSubtask(${task.id}, this)">
+                    </div>
+                </div>
+            `;
+        }
+
+        function toggleTask(id) {
+            const task = tasks.find(t => t.id === id);
+            if (!task) return;
+            
+            task.completed = !task.completed;
+            
+            if (task.completed) {
+                rewards.totalCompleted++;
+                rewards.bows++;
+                
+                if (rewards.totalCompleted % 10 === 0) {
+                    rewards.shoes++;
+                    showReward('🩰');
+                } else {
+                    showReward('🎀');
+                }
+                
+                updateRewards();
+            }
+            
+            saveTasks();
+            renderAll();
+        }
+
+        function toggleSubtask(taskId, index) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task && task.subtasks[index]) {
+                task.subtasks[index].completed = !task.subtasks[index].completed;
+                saveTasks();
+                renderAll();
+            }
+        }
+
+        function addSubtask(taskId, input) {
+            const title = input.value.trim();
+            if (!title) return;
+            
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                task.subtasks.push({ title, completed: false });
+                saveTasks();
+                renderAll();
+            }
+        }
+
+        function deleteTask(id) {
+            if (confirm('確定刪除這個任務嗎？')) {
+                tasks = tasks.filter(t => t.id !== id);
+                saveTasks();
+                renderAll();
+            }
+        }
+
+        // 添加任務面板
+        function openAddPanel() {
+            document.getElementById('addPanel').classList.add('open');
+            document.getElementById('overlay').classList.add('active');
+        }
+
+        function closeAddPanel() {
+            document.getElementById('addPanel').classList.remove('open');
+            document.getElementById('overlay').classList.remove('active');
+            resetForm();
+        }
+
+        function resetForm() {
+            document.getElementById('taskNameInput').value = '';
+            document.getElementById('deadlineInput').value = '';
+            document.getElementById('reminderInput').value = '';
+            isPriority = false;
+            document.getElementById('priorityBtn').textContent = '普通 Normal';
+            document.getElementById('priorityBtn').classList.remove('active');
+            selectCategory('work');
+        }
+
+        function selectCategory(category) {
+            selectedCategory = category;
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.category === category);
+            });
+        }
+
+        function togglePriority() {
+            isPriority = !isPriority;
+            const btn = document.getElementById('priorityBtn');
+            btn.textContent = isPriority ? '⭐ 優先 Priority' : '普通 Normal';
+            btn.classList.toggle('active', isPriority);
+        }
+
+        function addTask() {
+            const title = document.getElementById('taskNameInput').value.trim();
+            if (!title) {
+                alert('請輸入任務名稱');
+                return;
+            }
+            
+            const dateKey = getDateKey(selectedDate);
+            const deadline = document.getElementById('deadlineInput').value;
+            const reminder = document.getElementById('reminderInput').value;
+            
+            const task = {
+                id: Date.now(),
+                title,
+                category: selectedCategory,
+                priority: isPriority,
+                date: dateKey,
+                deadline,
+                reminder,
+                completed: false,
+                subtasks: [],
+                createdAt: new Date().toISOString()
+            };
+            
+            tasks.push(task);
+            saveTasks();
+            closeAddPanel();
+            renderAll();
+        }
+
+        // 獎勵
+        function showReward(emoji) {
+            const el = document.createElement('div');
+            el.className = 'reward-animation';
+            el.textContent = emoji;
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 1000);
+        }
+
+        function updateRewards() {
+            document.getElementById('bowCount').textContent = rewards.bows;
+            document.getElementById('statBows').textContent = rewards.bows;
+            document.getElementById('statShoes').textContent = rewards.shoes;
+            document.getElementById('statTotal').textContent = rewards.totalCompleted;
+            
+            const progress = (rewards.totalCompleted % 10) * 10;
+            document.getElementById('progressFill').style.width = progress + '%';
+            
+            const remaining = 10 - (rewards.totalCompleted % 10);
+            document.getElementById('progressText').textContent = 
+                rewards.shoes > 0 ? `已獲得 ${rewards.shoes} 雙芭蕾舞鞋` : `再完成 ${remaining} 個任務獲得芭蕾舞鞋`;
+        }
+
+        // 提醒
+        function checkReminders() {
+            const now = new Date();
+            const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+            const todayKey = getDateKey(now);
+            
+            tasks.forEach(task => {
+                if (task.date === todayKey && task.reminder === currentTime && !task.completed) {
+                    if (Notification.permission === 'granted') {
+                        new Notification('🩰 Ballet Planner 提醒', {
+                            body: task.title,
+                            icon: '🎀'
+                        });
+                    }
+                }
+            });
+        }
+
+        // 工具函數
+        function getDateKey(date) {
+            return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+        }
+
+        function saveTasks() {
+            localStorage.setItem('balletTasks', JSON.stringify(tasks));
+            localStorage.setItem('balletRewards', JSON.stringify(rewards));
+        }
+
+        // 請求通知權限
+        if (Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+
+        init();
+    </script>
+</body>
+</html>
